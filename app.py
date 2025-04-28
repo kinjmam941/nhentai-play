@@ -2,11 +2,9 @@ from flask import Flask, render_template_string, request, redirect, url_for
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
-import time
 
 app = Flask(__name__)
 
-# Updated headers to mimic a real browser
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
@@ -19,27 +17,25 @@ def fetch_videos(url):
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Updated selectors - inspect the current site structure
-        video_items = soup.find_all('div', class_='video-item') or soup.find_all('div', class_='video-card')  # Try common class names
-        
         videos = []
-        for item in video_items:
+        
+        # Adapt this based on real inspection
+        for item in soup.select('div.film-poster'):
             try:
-                title = item.find('a', class_='video-title') or item.find('h3')
-                link = title['href'] if title and title.get('href') else None
-                views = item.find('span', class_='views') or item.find('span', class_='view-count')
-                thumbnail = item.find('img')['src'] if item.find('img') else None
-                duration = item.find('span', class_='duration') or item.find('span', class_='time')
+                link_tag = item.find('a', href=True)
+                img_tag = item.find('img')
                 
-                if not title or not link:
+                if not link_tag or not img_tag:
                     continue
-                    
+                
+                title = img_tag.get('alt', 'No Title').strip()
+                link = link_tag['href']
+                thumbnail = img_tag.get('data-src') or img_tag.get('src')
+                
                 videos.append({
-                    'title': title.get_text().strip(),
+                    'title': title,
                     'link': link if link.startswith('http') else f'https://hstream.moe{link}',
-                    'views': views.get_text().strip() if views else 'N/A',
                     'thumbnail': thumbnail,
-                    'duration': duration.get_text().strip() if duration else 'N/A'
                 })
             except Exception as e:
                 print(f"Error parsing video item: {e}")
@@ -53,11 +49,11 @@ def fetch_videos(url):
 def index():
     url = "https://hstream.moe/"
     videos = fetch_videos(url)
-    return render_template_string(HTML_TEMPLATE, 
-                               videos=videos if videos else [],
-                               search_results=False,
-                               query='',
-                               error=None if videos else "Failed to fetch videos. The site structure may have changed or we're being blocked.")
+    return render_template_string(HTML_TEMPLATE,
+                                  videos=videos if videos else [],
+                                  search_results=False,
+                                  query='',
+                                  error=None if videos else "Failed to fetch videos.")
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
@@ -65,15 +61,47 @@ def search():
     if not query:
         return redirect(url_for('index'))
     
-    url = f"https://hstream.moe/search?q={quote_plus(query)}"
+    url = f"https://hstream.moe/filter?keyword={quote_plus(query)}"
     videos = fetch_videos(url)
-    return render_template_string(HTML_TEMPLATE, 
-                                videos=videos if videos else [],
-                                search_results=True,
-                                query=query,
-                                error=None if videos else "No results found or we're being blocked.")
+    return render_template_string(HTML_TEMPLATE,
+                                  videos=videos if videos else [],
+                                  search_results=True,
+                                  query=query,
+                                  error=None if videos else "No results found.")
 
-# ... (keep the rest of your existing code - HTML_TEMPLATE, etc.)
+# Simple HTML template
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HStream Scraper</title>
+</head>
+<body>
+    <h1>{% if search_results %}Search Results for "{{ query }}"{% else %}Latest Videos{% endif %}</h1>
+    
+    <form method="post" action="{{ url_for('search') }}">
+        <input type="text" name="query" placeholder="Search..." required>
+        <input type="submit" value="Search">
+    </form>
+    
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    
+    <div style="display:flex;flex-wrap:wrap;">
+        {% for video in videos %}
+            <div style="margin:10px;">
+                <a href="{{ video.link }}" target="_blank">
+                    <img src="{{ video.thumbnail }}" alt="{{ video.title }}" style="width:150px;height:auto;"><br>
+                    {{ video.title }}
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
+"""
 
 if __name__ == '__main__':
     app.run(debug=True)
