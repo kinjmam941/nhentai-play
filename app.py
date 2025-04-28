@@ -87,7 +87,7 @@ def index():
     if cached_videos:
         videos = cached_videos
     else:
-        url = "https://hanime.tv/browse"
+        url = "https://hanime.tv/"
         videos = fetch_videos(url)
         if videos is not None:
             set_cached_data('homepage', videos)
