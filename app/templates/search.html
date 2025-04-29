@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+<form class="search-box" action="/search">
+    <input 
+        type="search" 
+        name="q" 
+        placeholder="Search titles..." 
+        value="{{ query or '' }}"
+    >
+    <button type="submit">Search</button>
+</form>
+
+{% if query %}
+    <h2>Results for "{{ query }}"</h2>
+    <div class="hentai-grid">
+        {% for result in results %}
+            {% include "partials/hentai_card.html" %}
+        {% else %}
+            <p>No results found 😢</p>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}
