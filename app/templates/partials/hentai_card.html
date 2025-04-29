@@ -1,0 +1,16 @@
+<a href="/hentai/{{ item.id }}" class="hentai-card">
+    {% if item.rating %}
+    <div class="badge">
+        ⭐ {{ item.rating.rating|round(1) }}
+    </div>
+    {% endif %}
+    <img src="{{ item.thumbnail }}" alt="{{ item.title }}" loading="lazy">
+    <div class="card-content">
+        <h3>{{ item.title }}</h3>
+        <div class="tags">
+            {% for genre in item.genres[:2] %}
+            <small>{{ genre.name }}</small>
+            {% endfor %}
+        </div>
+    </div>
+</a>
